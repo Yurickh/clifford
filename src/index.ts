@@ -1,4 +1,4 @@
-import { spawn } from 'cross-spawn'
+import spawn from 'cross-spawn-with-kill'
 import { streamWrite, readableToString } from '@rauschma/stringio'
 import readLineGenerator from './read-line-generator'
 import attachDebugListeners from './attach-debug-listeners'
@@ -12,6 +12,7 @@ interface CliffordInstance {
   type(string: string | Buffer | Uint8Array): Promise<void>
   read(): Promise<string>
   readLine(): Promise<string>
+  kill(): void
 }
 
 export default function clifford(
@@ -41,5 +42,6 @@ export default function clifford(
       streamWrite(cli.stdin, `${string}\n`),
     read: () => readableToString(cli.stdout),
     readLine: () => outputIterator.next().then(({ value }) => value),
+    kill: () => cli.kill(),
   }
 }

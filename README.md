@@ -28,14 +28,21 @@ const cli = clifford('./path/to/your/entrypoint.js')
 
 #### binPath: string
 
-A global or relative path to the entry point of your project. This will be fed to `babel-node` respecting your local `.babelrc` if you have one, so you don't need to worry pointing to a built binary.
+A relative path to the cwd of the writing of the test to the entry point of your project. This will be fed to `babel-node` respecting your local `.babelrc` if you have one, so you don't need to worry pointing to a built binary.
+
+If you don't want to rely on where the tests will be run, you can pass a relative import through `require.resolve` like so:
+
+```js
+const commandPath = require.resolve('./index.ts')
+const cli = clifford(commandPath)
+```
 
 #### args: string[]
 
 An array with the parameters to be passed to the cli. If you want to run it with `--help`, for example, you would do like so:
 
 ```js
-const cli = clifford('./index.ts', ['--help'])
+const cli = clifford('src/index.ts', ['--help'])
 ```
 
 If you're familiar with `child_process` usage, this is similar to the second parameter of [child_process.spawn](https://nodejs.org/api/child_process.html#child_process_child_process_spawn_command_args_options).
@@ -44,7 +51,7 @@ Be mindful to always split your arguments when you would introduce a space.
 
 ```js
 // equivalent to ./index.ts --extensions .ts
-const cli = clifford('./index.ts', ['--extensions', '.ts'])
+const cli = clifford('src/index.ts', ['--extensions', '.ts'])
 ```
 
 #### options: { debug = false, readDelimiter = '\n' }
@@ -69,7 +76,7 @@ Clifford will give you an object with the following methods:
 
 ```js
 it('prints help', async () => {
-  const cli = clifford('./index.ts', ['--help'])
+  const cli = clifford('src/index.ts', ['--help'])
   const output = await cli.read()
   expect(output).toContain('Whatever your help prints')
 })
@@ -85,7 +92,7 @@ Be mindful that if your command prompts for user data, calling `cli.read` multip
 
 ```js
 it('prints help gradually', async () => {
-  const cli = clifford('./index.ts', ['--help'])
+  const cli = clifford('src/index.ts', ['--help'])
 
   const firstLine = await cli.readLine()
   expect(firstLine).toEqual('My first line of content')
@@ -105,7 +112,7 @@ If you're reading user input in the same line as the output, you might want to c
 
 ```js
 it('prompts if user wants to continue', async () => {
-  const cli = clifford('./index.ts', ['--help', '--prompt'])
+  const cli = clifford('src/index.ts', ['--help', '--prompt'])
 
   const firstLine = await cli.readLine()
   expect(firstLine).toEqual('Do you want to read the next line?')
@@ -118,3 +125,17 @@ it('prompts if user wants to continue', async () => {
 ```
 
 `cli.type` will inject whatever you pass to it into the command's `stdin` as if it was the user typing.
+
+#### cli.kill
+
+```js
+it('does something and never finishes', async () => {
+  const cli = clifford('src/infiniteLoop.js')
+
+  //...
+
+  cli.kill()
+})
+```
+
+Kills the cli process. Usually your process will be automatically closed as it should return, but if for some reason it doesn't, you should kill it before proceding, so you don't have memory leaks.

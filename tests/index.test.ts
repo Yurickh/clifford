@@ -30,5 +30,14 @@ describe('clifford', () => {
 
     const secondLine = await cli.readLine()
     expect(secondLine).toEqual('Welcome to the second line')
+
+    cli.kill()
+  })
+
+  it('works with simple js files', async () => {
+    const cli = clifford('tests/js-testcli.js', ['--version'])
+
+    const version = await cli.read()
+    expect(version).toMatch(/\d+\.\d+\.\d+/)
   })
 })

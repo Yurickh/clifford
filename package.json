@@ -35,6 +35,6 @@
     "@babel/core": "^7.7.2",
     "@babel/node": "^7.7.0",
     "@rauschma/stringio": "^1.4.0",
-    "cross-spawn": "^7.0.1"
+    "cross-spawn-with-kill": "^1.0.0"
   }
 }
