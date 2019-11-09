@@ -1,22 +1,40 @@
 {
   "name": "clifford",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Simple CLI integration testing",
-  "main": "index.js",
+  "main": "lib/clifford.js",
+  "module": "lib/clifford.mjs",
+  "source": "src/index.ts",
   "author": "Yurick <clifford@yurick.me>",
   "license": "MIT",
   "private": false,
   "scripts": {
+    "build": "microbundle",
+    "develop": "microbundle watch",
+    "test": "jest",
     "lint": "eslint ."
   },
   "devDependencies": {
+    "@babel/preset-env": "^7.7.1",
+    "@babel/preset-typescript": "^7.7.2",
+    "@types/cross-spawn": "^6.0.1",
+    "@types/jest": "^24.0.22",
     "@typescript-eslint/eslint-plugin": "^2.6.1",
     "@typescript-eslint/parser": "^2.6.1",
     "eslint": "^6.6.0",
     "eslint-config-prettier": "^6.5.0",
     "husky": "^3.0.9",
+    "jest": "^24.9.0",
     "lint-staged": "^9.4.2",
+    "microbundle": "^0.12.0-next.6",
     "prettier": "npm:@btmills/prettier",
-    "typescript": "^3.7.2"
+    "typescript": "^3.7.2",
+    "yargs": "^14.2.0"
+  },
+  "dependencies": {
+    "@babel/core": "^7.7.2",
+    "@babel/node": "^7.7.0",
+    "@rauschma/stringio": "^1.4.0",
+    "cross-spawn": "^7.0.1"
   }
 }
