@@ -1,3 +1,4 @@
+import 'regenerator-runtime'
 import spawn from 'cross-spawn-with-kill'
 import { streamWrite, readableToString } from '@rauschma/stringio'
 import readLineGenerator from './read-line-generator'
