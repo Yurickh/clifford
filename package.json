@@ -15,6 +15,8 @@
     "lint": "eslint ."
   },
   "devDependencies": {
+    "@babel/core": "^7.7.2",
+    "@babel/node": "^7.7.0",
     "@babel/preset-env": "^7.7.1",
     "@babel/preset-typescript": "^7.7.2",
     "@types/cross-spawn": "^6.0.1",
@@ -32,8 +34,6 @@
     "yargs": "^14.2.0"
   },
   "dependencies": {
-    "@babel/core": "^7.7.2",
-    "@babel/node": "^7.7.0",
     "@rauschma/stringio": "^1.4.0",
     "cross-spawn-with-kill": "^1.0.0"
   }
