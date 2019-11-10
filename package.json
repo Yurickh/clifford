@@ -5,6 +5,7 @@
   "main": "lib/clifford.js",
   "module": "lib/clifford.mjs",
   "source": "src/index.ts",
+  "types": "lib/index.d.ts",
   "author": "Yurick <clifford@yurick.me>",
   "license": "MIT",
   "private": false,
