@@ -1,7 +1,7 @@
 import clifford from '../src'
 
 describe('clifford', () => {
-  const command = require.resolve('./testcli.ts')
+  const command = require.resolve('./fixtures/testcli.ts')
 
   it('gets the help', async () => {
     const cli = clifford(command, ['--help'])
@@ -35,7 +35,7 @@ describe('clifford', () => {
   })
 
   it('works with simple js files', async () => {
-    const cli = clifford('tests/js-testcli.js', ['--version'])
+    const cli = clifford('tests/fixtures/js-testcli.js', ['--version'])
 
     const version = await cli.read()
     expect(version).toMatch(/\d+\.\d+\.\d+/)
