@@ -18,6 +18,8 @@
       {
         "allowExpressions": true
       }
-    ]
+    ],
+    // I'll call my class names however I want
+    "@typescript-eslint/class-name-casing": 0
   }
 }
