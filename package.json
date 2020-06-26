@@ -1,6 +1,6 @@
 {
   "name": "clifford",
-  "version": "0.1.4",
+  "version": "1.0.0",
   "description": "Simple CLI integration testing",
   "main": "lib/index.js",
   "module": "lib/index.mjs",
