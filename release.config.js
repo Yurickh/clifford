@@ -6,10 +6,10 @@ module.exports = {
       '@semantic-release/github',
       {
         assets: [
-          { path: 'lib/clifford.js', label: 'Standard distribution' },
-          { path: 'lib/clifford.mjs', label: 'ES6 modules distribution' },
-          { path: 'lib/clifford.modern.js', label: 'Modern JS distribution' },
-          { path: 'lib/clifford.umd.js', label: 'UMD distribution' },
+          { path: 'lib/index.js', label: 'Standard distribution' },
+          { path: 'lib/index.mjs', label: 'ES6 modules distribution' },
+          { path: 'lib/index.modern.js', label: 'Modern JS distribution' },
+          { path: 'lib/index.umd.js', label: 'UMD distribution' },
         ],
       },
     ],
