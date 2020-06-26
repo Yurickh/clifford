@@ -23,7 +23,7 @@ export default function clifford(
 ): CliffordInstance {
   const cli = spawn(
     'babel-node',
-    ['--extensions', '.ts', '--', command, ...args],
+    ['--extensions', '.ts,.js', '--', command, ...args],
     {
       stdio: 'pipe',
       cwd: process.cwd(),
