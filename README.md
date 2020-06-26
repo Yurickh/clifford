@@ -95,13 +95,17 @@ const cli = clifford('src/index.ts', ['--extensions', '.ts'])
 
 Options that modify internal behaviour.
 
-##### debug: boolean
+##### debug: boolean = false
 
 This option will print out every `stdout` that the command receives in addition to piping it to the `read` methods.
 
-##### readDelimiter: string | RegExp
+##### readDelimiter: string | RegExp = '\n'
 
 This option changes the delimiter for the `readLine` method. By changing it, you change the definition of "line".
+
+##### readTimeout: number = 1000
+
+Max number of milisseconds to wait on a single read. Calls to `readLine` will return `undefined` if the call takes more than the time defined here.
 
 ### Usage
 

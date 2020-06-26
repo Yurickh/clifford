@@ -6,6 +6,7 @@ import attachDebugListeners from './attach-debug-listeners'
 
 interface CliffordOptions {
   readDelimiter?: string | RegExp
+  readTimeout?: number
   debug?: boolean
 }
 
@@ -24,11 +25,22 @@ interface CliffordInstance {
   kill(): void
 }
 
+const defaultConfig = {
+  debug: false,
+  readDelimiter: '\n',
+  readTimeout: 1000,
+}
+
 export default function clifford(
   command: string,
   args: string[] = [],
-  options: CliffordOptions = { debug: false, readDelimiter: '\n' },
+  options: CliffordOptions = {},
 ): CliffordInstance {
+  options = {
+    ...defaultConfig,
+    ...options,
+  }
+
   const cli = spawn(
     'babel-node',
     ['--extensions', '.ts,.js', '--', command, ...args],
@@ -50,6 +62,11 @@ export default function clifford(
     type: async (string: string | Buffer | Uint8Array) =>
       streamWrite(cli.stdin, `${string}\n`),
     read: () => readableToString(cli.stdout),
+    readLine: () =>
+      Promise.race([
+        outputIterator.next().then(({ value }) => value),
+        new Promise((resolve) => setTimeout(resolve, options.readTimeout)),
+      ]),
     readUntil: async (matcher, options = {}) => {
       let line: string
       let appears = false
