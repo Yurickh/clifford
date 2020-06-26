@@ -31,6 +31,20 @@ const defaultConfig = {
   readTimeout: 1000,
 }
 
+const runWithTimeout = <T>(
+  promise: Promise<T>,
+  timeout: number,
+): Promise<T | undefined> =>
+  Promise.race<Promise<T | undefined>>([
+    promise,
+    new Promise((_resolve, reject) =>
+      setTimeout(
+        () => reject(new Error(`Promised timed out: ${promise}`)),
+        timeout,
+      ),
+    ),
+  ])
+
 export default function clifford(
   command: string,
   args: string[] = [],
@@ -62,14 +76,15 @@ export default function clifford(
     type: async (string: string | Buffer | Uint8Array) =>
       streamWrite(cli.stdin, `${string}\n`),
     read: () => readableToString(cli.stdout),
-    readLine: () =>
-      Promise.race([
-        outputIterator.next().then(({ value }) => value),
-        new Promise(
-          (resolve) =>
-            options.readTimeout && setTimeout(resolve, options.readTimeout),
-        ),
-      ]),
+    readLine: () => {
+      const line = outputIterator.next().then(({ value }) => value)
+
+      if (options.readTimeout) {
+        return runWithTimeout(line, options.readTimeout)
+      } else {
+        return line
+      }
+    },
     readUntil: async (matcher, options = {}) => {
       let line: string
       let appears = false
