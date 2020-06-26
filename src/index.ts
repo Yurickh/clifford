@@ -5,9 +5,9 @@ import readLineGenerator from './read-line-generator'
 import attachDebugListeners from './attach-debug-listeners'
 
 interface CliffordOptions {
-  readDelimiter?: string | RegExp
-  readTimeout?: number | false
-  debug?: boolean
+  readDelimiter: string | RegExp
+  readTimeout: number | false
+  debug: boolean
 }
 
 interface ReadUntilOptions {
@@ -48,9 +48,9 @@ const runWithTimeout = <T>(
 export default function clifford(
   command: string,
   args: string[] = [],
-  options: CliffordOptions = {},
+  options: Partial<CliffordOptions> = {},
 ): CliffordInstance {
-  options = {
+  const optionsWithDefault: CliffordOptions = {
     ...defaultConfig,
     ...options,
   }
@@ -68,19 +68,27 @@ export default function clifford(
     attachDebugListeners(cli)
   }
 
-  const outputIterator = readLineGenerator(cli.stdout, options.readDelimiter)[
-    Symbol.asyncIterator
-  ]()
+  const { stdin, stdout } = cli
+
+  if (stdout === null || stdin === null) {
+    // This is null only when `stdio` is configured otherwise
+    throw new Error('[Clifford]: stdio of spawn has been misconfigured')
+  }
+
+  const outputIterator = readLineGenerator(
+    stdout,
+    optionsWithDefault.readDelimiter,
+  )[Symbol.asyncIterator]()
 
   return {
     type: async (string: string | Buffer | Uint8Array) =>
-      streamWrite(cli.stdin, `${string}\n`),
-    read: () => readableToString(cli.stdout),
+      streamWrite(stdin, `${string}\n`),
+    read: () => readableToString(stdout),
     readLine: () => {
       const line = outputIterator.next().then(({ value }) => value)
 
-      if (options.readTimeout) {
-        return runWithTimeout(line, options.readTimeout)
+      if (optionsWithDefault.readTimeout) {
+        return runWithTimeout(line, optionsWithDefault.readTimeout)
       } else {
         return line
       }
