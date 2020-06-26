@@ -6,7 +6,7 @@ import attachDebugListeners from './attach-debug-listeners'
 
 interface CliffordOptions {
   readDelimiter?: string | RegExp
-  readTimeout?: number
+  readTimeout?: number | false
   debug?: boolean
 }
 
@@ -65,7 +65,10 @@ export default function clifford(
     readLine: () =>
       Promise.race([
         outputIterator.next().then(({ value }) => value),
-        new Promise((resolve) => setTimeout(resolve, options.readTimeout)),
+        new Promise(
+          (resolve) =>
+            options.readTimeout && setTimeout(resolve, options.readTimeout),
+        ),
       ]),
     readUntil: async (matcher, options = {}) => {
       let line: string

@@ -103,9 +103,11 @@ This option will print out every `stdout` that the command receives in addition 
 
 This option changes the delimiter for the `readLine` method. By changing it, you change the definition of "line".
 
-##### readTimeout: number = 1000
+##### readTimeout: number | false = 1000
 
 Max number of milisseconds to wait on a single read. Calls to `readLine` will return `undefined` if the call takes more than the time defined here.
+
+You can opt out of using any timeout by passing `false` to `readTimeout`.
 
 ### Usage
 

@@ -21,7 +21,8 @@ describe('clifford', () => {
   })
 
   it('reads line by line and input data', async () => {
-    const cli = clifford(command, ['sure'])
+    // For some reason, calls to readLine in some CI platforms take more than a second to resolve
+    const cli = clifford(command, ['sure'], { readTimeout: false })
 
     const firstLine = await cli.readLine()
     expect(firstLine).toEqual('Do you want to see the second line?')
