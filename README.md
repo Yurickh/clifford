@@ -143,6 +143,34 @@ it('prints help gradually', async () => {
 
 If you're reading user input in the same line as the output, you might want to change the `readDelimiter` option to something else (like `/\(y\/n\)/i`) since it doesn't print out the new line character until the input is submitted, so the promise will inevitably time out.
 
+#### cli.readUntil
+
+> `readUntil: (matcher: RegExp, options?: { stopsAppearing?: boolean }) => Promise<string>`
+
+```js
+it('prints the second line eventually', async () => {
+  const cli = clifford('src/index.ts', ['--help'])
+
+  const secondLine = await cli.readUntil(/second line/)
+  expect(secondLine).toEqual('My second line of content')
+})
+```
+
+`cli.readUntil` will read lines available in `stdout` of your cli until it reaches one that matches the regex provided in `matcher`. This is effectively the same as looping over `readLine`, so you should look out on how you configure your `readDelimiter` option.
+
+Alternatively, you can invert the logic to keep reading until you _stop_ reading something. This is mostly useful for async processes with animated loaders, where the number of lines printed is not deterministic.
+
+```js
+it('shows result after fetching the data', async () => {
+  const cli = clifford('src/index.ts', ['--fetch'])
+
+  const afterFetching = await cli.readUntil(/Fetching your credit\.\.\./, {
+    stopsAppearing: true,
+  })
+  expect(afterFetching).toEqual('You have credit')
+})
+```
+
 #### cli.type
 
 > `type: string -> Promise<void>`

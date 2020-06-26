@@ -9,10 +9,18 @@ interface CliffordOptions {
   debug?: boolean
 }
 
+interface ReadUntilOptions {
+  stopsAppearing?: boolean
+}
+
 interface CliffordInstance {
   type(string: string | Buffer | Uint8Array): Promise<void>
   read(): Promise<string>
   readLine(): Promise<string>
+  readUntil(
+    regex: RegExp,
+    options?: ReadUntilOptions,
+  ): Promise<string | undefined>
   kill(): void
 }
 
@@ -42,7 +50,17 @@ export default function clifford(
     type: async (string: string | Buffer | Uint8Array) =>
       streamWrite(cli.stdin, `${string}\n`),
     read: () => readableToString(cli.stdout),
-    readLine: () => outputIterator.next().then(({ value }) => value),
+    readUntil: async (matcher, options = {}) => {
+      let line: string
+      let appears = false
+
+      do {
+        line = (await outputIterator.next()).value
+        appears = matcher.test(line)
+      } while (options.stopsAppearing ? appears : !appears)
+
+      return line
+    },
     kill: () => cli.kill(),
   }
 }

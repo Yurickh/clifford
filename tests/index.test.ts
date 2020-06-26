@@ -40,4 +40,14 @@ describe('clifford', () => {
     const version = await cli.read()
     expect(version).toMatch(/\d+\.\d+\.\d+/)
   })
+
+  it('reads until certain input is shown', async () => {
+    const cli = clifford(command, ['sure'])
+    cli.type('y')
+
+    const secondLine = await cli.readUntil(/Welcome/)
+    expect(secondLine).toEqual('Welcome to the second line')
+
+    cli.kill()
+  })
 })
