@@ -91,7 +91,7 @@ Be mindful to always split your arguments when you would introduce a space.
 const cli = clifford('src/index.ts', ['--extensions', '.ts'])
 ```
 
-#### options: { debug = false, readDelimiter = '\n' }
+#### options: { debug = false, readDelimiter = '\n', readTimeout = false, useBabelNode = false }
 
 Options that modify internal behaviour.
 
@@ -108,6 +108,12 @@ This option changes the delimiter for the `readLine` method. By changing it, you
 Max number of milisseconds to wait on a single read. Calls to `readLine` will return `undefined` if the call takes more than the time defined here.
 
 You can opt out of using any timeout by passing `false` to `readTimeout`.
+
+##### useBabelNode: boolean = false
+
+Whether clifford should use `babel-node` to run your cli. Provide it as `true` if your `command` parameter points to `.ts` file, or if you want to provide some kind of transpilation step.
+
+When false, clifford will run your cli with the `node` available in `$PATH`.
 
 ### Usage
 
@@ -210,3 +216,34 @@ it('does something and never finishes', async () => {
 ```
 
 Kills the cli process. Usually your process will be automatically closed as it should return, but if for some reason it doesn't, you should kill it before proceding, so you don't have memory leaks.
+
+## Common issues
+
+### babel-node spawn ENOENT
+
+You either provided a file that doesn't exist to clifford, or `babel-node` is not in your path. You can provide `useBabelNode` as false, or install the peerDependencies:
+
+```bash
+yarn add --dev @babel/core @babel/node
+```
+
+If you already have `useBabelNode` as false, try `console.log(cli)` to check which path the cli is receiving.
+
+### ReferenceError regeneratorRuntime is not defined
+
+This means your babel config doesn't support the clifford generator. A common fix is to install `@babel/preset-env` and set it into your `.babelrc`:
+
+```json
+{
+  "presets": [
+    [
+      "@babel/preset-env",
+      {
+        "targets": {
+          "esmodules": true
+        }
+      }
+    ]
+  ]
+}
+```
