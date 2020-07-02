@@ -23,6 +23,8 @@ interface CliffordInstance {
     options?: ReadUntilOptions,
   ): Promise<string | undefined>
   kill(): void
+  toString(): string
+  toJSON(): string
 }
 
 const defaultConfig = {
@@ -80,6 +82,12 @@ export default function clifford(
     optionsWithDefault.readDelimiter,
   )[Symbol.asyncIterator]()
 
+  const stringification = `[Clifford instance: 
+    running process at \`${command}\` 
+    with args \`${args}\` 
+  ]
+`
+
   return {
     type: async (string: string | Buffer | Uint8Array) =>
       streamWrite(stdin, `${string}\n`),
@@ -105,5 +113,7 @@ export default function clifford(
       return line
     },
     kill: () => cli.kill(),
+    toString: () => stringification,
+    toJSON: () => stringification,
   }
 }
