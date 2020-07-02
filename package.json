@@ -18,6 +18,10 @@
     "lint": "eslint .",
     "semantic-release": "semantic-release"
   },
+  "peerDependencies": {
+    "@babel/core": "^7.x",
+    "@babel/node": "^7.x"
+  },
   "devDependencies": {
     "@babel/core": "^7.7.2",
     "@babel/node": "^7.7.0",

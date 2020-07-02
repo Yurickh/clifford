@@ -8,6 +8,7 @@ interface CliffordOptions {
   readDelimiter: string | RegExp
   readTimeout: number | false
   debug: boolean
+  useBabelNode: boolean
 }
 
 interface ReadUntilOptions {
@@ -31,6 +32,7 @@ const defaultConfig = {
   debug: false,
   readDelimiter: '\n',
   readTimeout: 1000,
+  useBabelNode: false,
 }
 
 const runWithTimeout = <T>(
@@ -47,6 +49,18 @@ const runWithTimeout = <T>(
     ),
   ])
 
+const spawnNode = (command: string, args: string[]) =>
+  spawn('node', ['--', command, ...args], {
+    stdio: 'pipe',
+    cwd: process.cwd(),
+  })
+
+const spawnBabelNode = (command: string, args: string[]) =>
+  spawn('babel-node', ['--extensions', '.ts,.js', '--', command, ...args], {
+    stdio: 'pipe',
+    cwd: process.cwd(),
+  })
+
 export default function clifford(
   command: string,
   args: string[] = [],
@@ -57,14 +71,8 @@ export default function clifford(
     ...options,
   }
 
-  const cli = spawn(
-    'babel-node',
-    ['--extensions', '.ts,.js', '--', command, ...args],
-    {
-      stdio: 'pipe',
-      cwd: process.cwd(),
-    },
-  )
+  const spawner = options.useBabelNode ? spawnBabelNode : spawnNode
+  const cli = spawner(command, args)
 
   if (options.debug) {
     attachDebugListeners(cli)
@@ -82,11 +90,9 @@ export default function clifford(
     optionsWithDefault.readDelimiter,
   )[Symbol.asyncIterator]()
 
-  const stringification = `[Clifford instance: 
-    running process at \`${command}\` 
-    with args \`${args}\` 
-  ]
-`
+  const stringification = `[Clifford instance: running process at \`${command}\` with args \`${JSON.stringify(
+    args,
+  )}\` ]`
 
   return {
     type: async (string: string | Buffer | Uint8Array) =>
