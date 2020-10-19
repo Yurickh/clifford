@@ -4,7 +4,7 @@ describe('clifford', () => {
   const command = require.resolve('./fixtures/testcli.ts')
 
   it('gets the help', async () => {
-    const cli = clifford(command, ['--help'], { useBabelNode: true })
+    const cli = clifford(command, ['--help'])
 
     const helpText = await cli.read()
     expect(helpText).toMatchInlineSnapshot(`
@@ -15,17 +15,12 @@ describe('clifford', () => {
 
       Options:
         --version  Show version number                                       [boolean]
-        --help     Show help                                                 [boolean]
-      "
+        --help     Show help                                                 [boolean]"
     `)
   })
 
   it('reads line by line and input data', async () => {
-    // For some reason, calls to readLine in some CI platforms take more than a second to resolve
-    const cli = clifford(command, ['sure'], {
-      readTimeout: false,
-      useBabelNode: true,
-    })
+    const cli = clifford(command, ['sure'])
 
     const firstLine = await cli.readLine()
     expect(firstLine).toEqual('Do you want to see the second line?')
@@ -35,7 +30,8 @@ describe('clifford', () => {
     const secondLine = await cli.readLine()
     expect(secondLine).toEqual('Welcome to the second line')
 
-    cli.kill()
+    // This ensures the process is done before exiting
+    await cli.kill()
   })
 
   it('works with simple js files', async () => {
@@ -46,12 +42,12 @@ describe('clifford', () => {
   })
 
   it('reads until certain input is shown', async () => {
-    const cli = clifford(command, ['sure'], { useBabelNode: true })
+    const cli = clifford(command, ['sure'])
     cli.type('y')
 
-    const secondLine = await cli.readUntil(/Welcome/)
+    const secondLine = await cli.readUntil('Welcome')
     expect(secondLine).toEqual('Welcome to the second line')
 
-    cli.kill()
+    await cli.kill()
   })
 })

@@ -56,6 +56,14 @@ export default function clifford(
     replacers: optionsWithDefault.replacers,
   })
 
+  const untilClose = () =>
+    Promise.race([
+      reader.untilClose(),
+      new Promise((resolve) => {
+        cli.once('close', resolve)
+      }),
+    ])
+
   return {
     // Although we don't need await here, it seems `write` might be async on windows
     type: async (string: string) => {
@@ -68,14 +76,12 @@ export default function clifford(
     findByText: (matcher: string | RegExp) => reader.findByText(matcher),
     readScreen: () => reader.readScreen(),
     readUntil: (matcher: string | RegExp) => reader.until(matcher),
-    untilClose: () =>
-      Promise.race([
-        reader.untilClose(),
-        new Promise((resolve) => {
-          cli.once('close', resolve)
-        }),
-      ]),
-    kill: () => cli.cancel(),
+    readLine: () => reader.until(undefined),
+    untilClose,
+    kill: () => {
+      cli.cancel()
+      return untilClose()
+    },
     toString: () => stringification,
     toJSON: () => stringification,
   }

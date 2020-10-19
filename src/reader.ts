@@ -146,14 +146,21 @@ export class Reader {
    * Method to wait until a line is printed with a given string.
    * @param matcher The string you're looking for, or a regex expression to match.
    */
-  public async until(matcher: string | RegExp) {
+  public async until(matcher: string | RegExp | undefined) {
     const eventQueue = new EventQueue(this.lineFeedEmitter, 'line')
     do {
       // We update the screen on every iteration so we get only the final chunk by the end
       const diff = this.updateScreen()
-      if (test(matcher, diff)) {
-        eventQueue.dispose()
-        return diff
+
+      if (matcher === undefined) {
+        if (diff !== '') {
+          return diff
+        }
+      } else {
+        if (test(matcher, diff)) {
+          eventQueue.dispose()
+          return diff
+        }
       }
     } while (await eventQueue.next())
   }

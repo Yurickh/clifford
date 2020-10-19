@@ -10,11 +10,11 @@ export class Terminal {
     this.parser = new AnsiParser(this.terminal)
   }
 
-  public read(): string {
+  public read() {
     return this.terminal.toString()
   }
 
-  public write(chunk: string): void {
+  public write(chunk: string) {
     return this.parser.parse(chunk)
   }
 }
