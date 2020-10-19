@@ -47,8 +47,9 @@
     "yargs": "^14.2.0"
   },
   "dependencies": {
-    "@rauschma/stringio": "^1.4.0",
-    "cross-spawn-with-kill": "^1.0.0"
+    "execa": "^4.0.3",
+    "node-ansiparser": "^2.2.0",
+    "node-ansiterminal": "^0.2.1-beta"
   },
   "repository": {
     "type": "git",

@@ -1,124 +1,81 @@
-import 'regenerator-runtime'
-import spawn from 'cross-spawn-with-kill'
-import { streamWrite, readableToString } from '@rauschma/stringio'
-import readLineGenerator from './read-line-generator'
-import attachDebugListeners from './attach-debug-listeners'
+import execa from 'execa'
+import { Reader } from './reader'
 
 interface CliffordOptions {
-  readDelimiter: string | RegExp
   readTimeout: number | false
   debug: boolean
   useBabelNode: boolean
+  replacers: ((chunk: string) => string)[]
 }
 
-interface ReadUntilOptions {
-  stopsAppearing?: boolean
-}
-
-interface CliffordInstance {
-  type(string: string | Buffer | Uint8Array): Promise<void>
-  read(): Promise<string>
-  readLine(): Promise<string>
-  readUntil(
-    regex: RegExp,
-    options?: ReadUntilOptions,
-  ): Promise<string | undefined>
-  kill(): void
-  toString(): string
-  toJSON(): string
-}
-
-const defaultConfig = {
+const defaultConfig = (command: string) => ({
   debug: false,
-  readDelimiter: '\n',
   readTimeout: 1000,
-  useBabelNode: false,
-}
+  useBabelNode: !command.endsWith('.js'),
+  replacers: [],
+})
 
-const runWithTimeout = <T>(
-  promise: Promise<T>,
-  timeout: number,
-): Promise<T | undefined> =>
-  Promise.race<Promise<T | undefined>>([
-    promise,
-    new Promise((_resolve, reject) =>
-      setTimeout(
-        () => reject(new Error(`Promised timed out: ${promise}`)),
-        timeout,
-      ),
-    ),
-  ])
+const execaOptions = () => ({
+  all: true,
+  preferLocal: true,
+})
 
 const spawnNode = (command: string, args: string[]) =>
-  spawn('node', ['--', command, ...args], {
-    stdio: 'pipe',
-    cwd: process.cwd(),
-  })
+  execa('node', ['--', command, ...args], execaOptions())
 
 const spawnBabelNode = (command: string, args: string[]) =>
-  spawn('babel-node', ['--extensions', '.ts,.js', '--', command, ...args], {
-    stdio: 'pipe',
-    cwd: process.cwd(),
-  })
+  execa(
+    'babel-node',
+    ['--extensions', '.ts,.js', '--', command, ...args],
+    execaOptions(),
+  )
 
 export default function clifford(
   command: string,
   args: string[] = [],
   options: Partial<CliffordOptions> = {},
-): CliffordInstance {
+) {
   const optionsWithDefault: CliffordOptions = {
-    ...defaultConfig,
+    ...defaultConfig(command),
     ...options,
   }
 
-  const spawner = options.useBabelNode ? spawnBabelNode : spawnNode
+  const spawner = optionsWithDefault.useBabelNode ? spawnBabelNode : spawnNode
   const cli = spawner(command, args)
 
-  if (options.debug) {
-    attachDebugListeners(cli)
-  }
-
-  const { stdin, stdout } = cli
-
-  if (stdout === null || stdin === null) {
-    // This is null only when `stdio` is configured otherwise
-    throw new Error('[Clifford]: stdio of spawn has been misconfigured')
-  }
-
-  const outputIterator = readLineGenerator(
-    stdout,
-    optionsWithDefault.readDelimiter,
-  )[Symbol.asyncIterator]()
-
-  const stringification = `[Clifford instance: running process at \`${command}\` with args \`${JSON.stringify(
+  const stringification = `[Clifford instance: running process for \`${command}\` with args \`${JSON.stringify(
     args,
   )}\` ]`
 
+  if (cli.all === undefined) {
+    throw new Error('[Clifford]: stdio of spawn has been misconfigured')
+  }
+
+  const reader = new Reader(cli.all, {
+    debug: optionsWithDefault.debug,
+    replacers: optionsWithDefault.replacers,
+  })
+
   return {
-    type: async (string: string | Buffer | Uint8Array) =>
-      streamWrite(stdin, `${string}\n`),
-    read: () => readableToString(stdout),
-    readLine: () => {
-      const line = outputIterator.next().then(({ value }) => value)
-
-      if (optionsWithDefault.readTimeout) {
-        return runWithTimeout(line, optionsWithDefault.readTimeout)
-      } else {
-        return line
+    // Although we don't need await here, it seems `write` might be async on windows
+    type: async (string: string) => {
+      if (cli.stdin === null) {
+        throw new Error('[Clifford]: stdio of spawn has been misconfigured')
       }
+      cli.stdin.write(`${string}\n`)
     },
-    readUntil: async (matcher, options = {}) => {
-      let line: string
-      let appears = false
-
-      do {
-        line = (await outputIterator.next()).value
-        appears = matcher.test(line)
-      } while (options.stopsAppearing ? appears : !appears)
-
-      return line
-    },
-    kill: () => cli.kill(),
+    read: () => cli.then(({ all }) => all),
+    findByText: (matcher: string | RegExp) => reader.findByText(matcher),
+    readScreen: () => reader.readScreen(),
+    readUntil: (matcher: string | RegExp) => reader.until(matcher),
+    untilClose: () =>
+      Promise.race([
+        reader.untilClose(),
+        new Promise((resolve) => {
+          cli.once('close', resolve)
+        }),
+      ]),
+    kill: () => cli.cancel(),
     toString: () => stringification,
     toJSON: () => stringification,
   }
