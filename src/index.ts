@@ -89,7 +89,15 @@ class CliffordInstance {
    * i.e. if it waits for user input.
    */
   public read() {
-    return this.cli.then(({ all }) => all)
+    return this.cli.then(({ all }) => {
+      if (all === undefined) {
+        throw new Error(
+          '[Clifford]: `all` appears to be undefined during a CliffordInstance#read call. This should never happen if stdio of spawn is properly configured. Please let the mainters of clifford know by opening an issue at https://github.com/Yurickh/clifford/issues/new',
+        )
+      }
+
+      return all
+    })
   }
 
   /**

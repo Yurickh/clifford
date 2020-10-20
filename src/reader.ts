@@ -92,7 +92,11 @@ export class Reader {
             this.lineFeedEmitter.emit('line')
 
             if (this.debug) {
-              console.info('[current screen]\n', this.readScreen())
+              console.info(
+                '=====[Clifford screen]=====\n',
+                this.readScreen(),
+                '\n===========================',
+              )
             }
           })
         })
@@ -163,6 +167,10 @@ export class Reader {
         }
       }
     } while (await eventQueue.next())
+
+    // There should be no way of getting out of the loop above.
+    // Let ts know that.
+    return undefined as never
   }
 
   /**
@@ -177,6 +185,15 @@ export class Reader {
       return this.until(matcher)
     }
 
-    return screen.split(EOL).reverse().find(test(matcher))
+    const line = screen.split(EOL).reverse().find(test(matcher))
+
+    if (line === undefined) {
+      // TODO: use invariants instead
+      throw new Error(
+        '[Clifford]: findByText has found nothing, even though test found a match. This should never happen, please let the mainters of clifford know by opening an issue at https://github.com/Yurickh/clifford/issues/new',
+      )
+    }
+
+    return line
   }
 }
