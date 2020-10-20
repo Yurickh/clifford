@@ -45,7 +45,7 @@ describe('clifford', () => {
     const cli = clifford(command, ['sure'])
     cli.type('y')
 
-    const secondLine = await cli.readUntil('Welcome')
+    const secondLine = await cli.waitUntil('Welcome')
     expect(secondLine).toEqual('Welcome to the second line')
 
     await cli.kill()
