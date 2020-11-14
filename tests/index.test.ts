@@ -3,39 +3,88 @@ import clifford from '../src'
 describe('clifford', () => {
   const command = require.resolve('./fixtures/testcli.ts')
 
-  it('gets the help', async () => {
-    const cli = clifford(command, ['--help'], { useBabelNode: true })
+  describe('#read', () => {
+    it('reads the whole output', async () => {
+      const cli = clifford(command, ['--help'])
 
-    const helpText = await cli.read()
-    expect(helpText).toMatchInlineSnapshot(`
-      "Usage: testcli
+      const helpText = await cli.read()
+      expect(helpText).toMatchInlineSnapshot(`
+        "Usage: testcli
 
-      Commands:
-        testcli sure  A nice test command
+        Commands:
+          testcli sure  A nice test command
 
-      Options:
-        --version  Show version number                                       [boolean]
-        --help     Show help                                                 [boolean]
-      "
-    `)
+        Options:
+          --version  Show version number                                       [boolean]
+          --help     Show help                                                 [boolean]"
+      `)
+    })
   })
 
-  it('reads line by line and input data', async () => {
-    // For some reason, calls to readLine in some CI platforms take more than a second to resolve
-    const cli = clifford(command, ['sure'], {
-      readTimeout: false,
-      useBabelNode: true,
+  describe('#readLine', () => {
+    it('reads line by line', async () => {
+      const cli = clifford(command, ['sure'])
+
+      const firstLine = await cli.readLine()
+      expect(firstLine).toEqual('Do you want to see the second line?')
+
+      await cli.kill()
+    })
+  })
+
+  describe('#findByText', () => {
+    it('finds lines that are already in the screen', async () => {
+      const cli = clifford(command, ['sure'])
+
+      const firstLine = await cli.readLine()
+      expect(firstLine).toEqual('Do you want to see the second line?')
+
+      const sameLine = await cli.findByText(/want/)
+      expect(sameLine).toEqual('Do you want to see the second line?')
+
+      await cli.kill()
     })
 
-    const firstLine = await cli.readLine()
-    expect(firstLine).toEqual('Do you want to see the second line?')
+    it('waits until new lines match, if none match still', async () => {
+      const cli = clifford(command, ['sure'])
 
-    await cli.type('yeah, sure')
+      await cli.readLine()
 
-    const secondLine = await cli.readLine()
-    expect(secondLine).toEqual('Welcome to the second line')
+      await cli.type('yeah, sure')
 
-    cli.kill()
+      const secondLine = await cli.findByText('Welcome')
+      expect(secondLine).toEqual('Welcome to the second line')
+
+      await cli.untilClose()
+    })
+  })
+
+  describe('#waitUntil', () => {
+    it('reads until certain input is shown', async () => {
+      const cli = clifford(command, ['sure'])
+      cli.type('y')
+
+      const secondLine = await cli.waitUntil('Welcome')
+      expect(secondLine).toEqual('Welcome to the second line')
+
+      await cli.untilClose()
+    })
+  })
+
+  describe('#type', () => {
+    it('inputs the message into the underlying process', async () => {
+      const cli = clifford(command, ['sure'])
+
+      const firstLine = await cli.readLine()
+      expect(firstLine).toEqual('Do you want to see the second line?')
+
+      await cli.type('yeah, sure')
+
+      const secondLine = await cli.readLine()
+      expect(secondLine).toEqual('Welcome to the second line')
+
+      await cli.untilClose()
+    })
   })
 
   it('works with simple js files', async () => {
@@ -43,15 +92,7 @@ describe('clifford', () => {
 
     const version = await cli.read()
     expect(version).toMatch(/\d+\.\d+\.\d+/)
-  })
 
-  it('reads until certain input is shown', async () => {
-    const cli = clifford(command, ['sure'], { useBabelNode: true })
-    cli.type('y')
-
-    const secondLine = await cli.readUntil(/Welcome/)
-    expect(secondLine).toEqual('Welcome to the second line')
-
-    cli.kill()
+    await cli.untilClose()
   })
 })

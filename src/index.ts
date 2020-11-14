@@ -1,125 +1,194 @@
-import 'regenerator-runtime'
-import spawn from 'cross-spawn-with-kill'
-import { streamWrite, readableToString } from '@rauschma/stringio'
-import readLineGenerator from './read-line-generator'
-import attachDebugListeners from './attach-debug-listeners'
+import fs from 'fs'
+import execa from 'execa'
+import { Reader } from './reader'
 
-interface CliffordOptions {
-  readDelimiter: string | RegExp
-  readTimeout: number | false
-  debug: boolean
-  useBabelNode: boolean
+export interface CliffordOptions {
+  debug?: boolean
+  useBabelNode?: boolean
+  replacers?: ((chunk: string) => string)[]
 }
 
-interface ReadUntilOptions {
-  stopsAppearing?: boolean
-}
-
-interface CliffordInstance {
-  type(string: string | Buffer | Uint8Array): Promise<void>
-  read(): Promise<string>
-  readLine(): Promise<string>
-  readUntil(
-    regex: RegExp,
-    options?: ReadUntilOptions,
-  ): Promise<string | undefined>
-  kill(): void
-  toString(): string
-  toJSON(): string
-}
-
-const defaultConfig = {
+const defaultConfig = (command: string) => ({
   debug: false,
-  readDelimiter: '\n',
-  readTimeout: 1000,
-  useBabelNode: false,
-}
+  useBabelNode: !command.endsWith('.js') || fs.existsSync('.babelrc'),
+  replacers: [],
+})
 
-const runWithTimeout = <T>(
-  promise: Promise<T>,
-  timeout: number,
-): Promise<T | undefined> =>
-  Promise.race<Promise<T | undefined>>([
-    promise,
-    new Promise((_resolve, reject) =>
-      setTimeout(
-        () => reject(new Error(`Promised timed out: ${promise}`)),
-        timeout,
-      ),
-    ),
-  ])
+const execaOptions = () => ({
+  all: true,
+  preferLocal: true,
+})
 
 const spawnNode = (command: string, args: string[]) =>
-  spawn('node', ['--', command, ...args], {
-    stdio: 'pipe',
-    cwd: process.cwd(),
-  })
+  execa('node', ['--', command, ...args], execaOptions())
 
 const spawnBabelNode = (command: string, args: string[]) =>
-  spawn('babel-node', ['--extensions', '.ts,.js', '--', command, ...args], {
-    stdio: 'pipe',
-    cwd: process.cwd(),
-  })
+  execa(
+    'babel-node',
+    ['--extensions', '.ts,.js', '--', command, ...args],
+    execaOptions(),
+  )
+
+type Unpartial<T> = { [k in keyof T]-?: T[k] }
+
+class CliffordInstance {
+  /**
+   * The options provided to the clifford instance at its construction.
+   */
+  private options: Unpartial<CliffordOptions>
+  /**
+   * The child process pointer.
+   */
+  private cli: execa.ExecaChildProcess<string>
+  /**
+   * The instance that reads and formats the process' output
+   */
+  private reader: Reader
+  /**
+   * Flags the underlying process has been closed
+   */
+  private isDead: boolean
+
+  constructor(
+    private command: string,
+    private args: string[],
+    options: CliffordOptions,
+  ) {
+    this.options = {
+      ...defaultConfig(command),
+      ...options,
+    }
+
+    const spawner = this.options.useBabelNode ? spawnBabelNode : spawnNode
+    this.cli = spawner(command, args)
+
+    if (this.cli.all === undefined) {
+      throw new Error('[Clifford]: stdio of spawn has been misconfigured')
+    }
+
+    this.reader = new Reader(this.cli.all, {
+      debug: this.options.debug,
+      replacers: this.options.replacers,
+    })
+
+    this.isDead = false
+    this.cli.once('close', () => (this.isDead = true))
+    this.cli.once('exit', () => (this.isDead = true))
+  }
+
+  /**
+   * Type a string to the process.
+   * This will ultimately write the string provided to the process' stdin feed.
+   *
+   * @param string The string to be typed.
+   */
+  public async type(string: string) {
+    if (this.cli.stdin === null) {
+      throw new Error('[Clifford]: stdio of spawn has been misconfigured')
+    }
+    this.cli.stdin.write(`${string}\n`)
+  }
+
+  /**
+   * Read the process' output until its exit event.
+   *
+   * WARNING! This _will_ timeout if your process hangs for any reason,
+   * i.e. if it waits for user input.
+   */
+  public read() {
+    return this.cli.then(({ all }) => {
+      if (all === undefined) {
+        throw new Error(
+          '[Clifford]: `all` appears to be undefined during a CliffordInstance#read call. This should never happen if stdio of spawn is properly configured. Please let the mainters of clifford know by opening an issue at https://github.com/Yurickh/clifford/issues/new',
+        )
+      }
+
+      return all
+    })
+  }
+
+  /**
+   * Returns the next line printed in the screen.
+   * In case there's no line to be read in the screen, wait until a new one has been printed.
+   *
+   * WARNING! This _will_ timeout if your process hands for any reason,
+   * i.e. if it waits for user input.
+   */
+  public readLine() {
+    return this.reader.until(undefined)
+  }
+
+  /**
+   * Finds a line in the screen and returns it.
+   * It will return the first line it finds, including lines that have already been read.
+   * In case no line in the current screen satisfies the provided matcher, wait until something
+   * that is printed does.
+   *
+   * WARNING! This _will_ timeout if your process hangs for any reason,
+   * i.e. if it waits for user input.
+   *
+   * @param matcher A string or regex we should use to match lines and find a
+   * piece of text in the screen.
+   */
+  public findByText(matcher: string | RegExp) {
+    return this.reader.findByText(matcher)
+  }
+
+  /**
+   * Waits util a line satisfies the matcher provided.
+   * It won't look at lines that have already been read, so use it only if you're sure that
+   * the line you're looking for is not already flushed to the screen.
+   *
+   * WARNING! This _will_ timeout if your process hands for any reason,
+   * i.e. if it waits for user input.'
+   *
+   * @param matcher A string or regex we should use to match lines and find a
+   * piece of text in the screen.
+   */
+  public waitUntil(matcher: string | RegExp) {
+    return this.reader.until(matcher)
+  }
+
+  /**
+   * Kills the process and waits until its streams are properly closed.
+   * It's advised you wait for this method at the end of tests that don't go through
+   * the process until it self-closes.
+   */
+  public async kill() {
+    this.cli.cancel()
+
+    await this.untilClose()
+  }
+
+  /**
+   * Waits until the underlying process has closed.
+   */
+  public async untilClose() {
+    if (this.isDead) {
+      return
+    }
+
+    return Promise.race([
+      new Promise((resolve) => this.cli.once('close', resolve)),
+      this.cli.all,
+    ])
+  }
+
+  /**
+   * A more readable alternative to the default [object Object]
+   * Will be used in all kinds of stringification, e.g. `potato: ${cliffordInstance}`
+   */
+  toString() {
+    return `[CliffordInstance: running process for \`${
+      this.command
+    }\` with args \`${JSON.stringify(this.args)}\` ]`
+  }
+}
 
 export default function clifford(
   command: string,
   args: string[] = [],
-  options: Partial<CliffordOptions> = {},
-): CliffordInstance {
-  const optionsWithDefault: CliffordOptions = {
-    ...defaultConfig,
-    ...options,
-  }
-
-  const spawner = options.useBabelNode ? spawnBabelNode : spawnNode
-  const cli = spawner(command, args)
-
-  if (options.debug) {
-    attachDebugListeners(cli)
-  }
-
-  const { stdin, stdout } = cli
-
-  if (stdout === null || stdin === null) {
-    // This is null only when `stdio` is configured otherwise
-    throw new Error('[Clifford]: stdio of spawn has been misconfigured')
-  }
-
-  const outputIterator = readLineGenerator(
-    stdout,
-    optionsWithDefault.readDelimiter,
-  )[Symbol.asyncIterator]()
-
-  const stringification = `[Clifford instance: running process at \`${command}\` with args \`${JSON.stringify(
-    args,
-  )}\` ]`
-
-  return {
-    type: async (string: string | Buffer | Uint8Array) =>
-      streamWrite(stdin, `${string}\n`),
-    read: () => readableToString(stdout),
-    readLine: () => {
-      const line = outputIterator.next().then(({ value }) => value)
-
-      if (optionsWithDefault.readTimeout) {
-        return runWithTimeout(line, optionsWithDefault.readTimeout)
-      } else {
-        return line
-      }
-    },
-    readUntil: async (matcher, options = {}) => {
-      let line: string
-      let appears = false
-
-      do {
-        line = (await outputIterator.next()).value
-        appears = matcher.test(line)
-      } while (options.stopsAppearing ? appears : !appears)
-
-      return line
-    },
-    kill: () => cli.kill(),
-    toString: () => stringification,
-    toJSON: () => stringification,
-  }
+  options: CliffordOptions = {},
+) {
+  return new CliffordInstance(command, args, options)
 }

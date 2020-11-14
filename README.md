@@ -33,8 +33,6 @@ describe('my cli', () => {
 
     const secondLine = await cli.readLine()
     expect(secondLine).toEqual('Welcome to the second line')
-
-    cli.kill()
   })
 })
 ```
@@ -42,13 +40,13 @@ describe('my cli', () => {
 ## Installing
 
 ```bash
-npm install --save-dev clifford
+yarn add --dev clifford
 ```
 
 or
 
 ```bash
-yarn add --dev clifford
+npm install --save-dev clifford
 ```
 
 ## API
@@ -65,7 +63,11 @@ const cli = clifford('./path/to/your/entrypoint.js')
 
 #### binPath: string
 
-A relative path to the cwd of the writing of the test to the entry point of your project. This will be fed to `babel-node` respecting your local `.babelrc` if you have one, so you don't need to worry pointing to a built binary.
+| Type     | default  |
+| -------- | -------- |
+| `string` | required |
+
+A relative path to the cwd to the entry point of your project. This will be fed to `babel-node` respecting your local `.babelrc` if you have one, so you don't need to worry to build your TS before running your tests.
 
 If you don't want to rely on where the tests will be run, you can pass a relative import through `require.resolve` like so:
 
@@ -74,7 +76,11 @@ const commandPath = require.resolve('./index.ts')
 const cli = clifford(commandPath)
 ```
 
-#### args: string[]
+#### args
+
+| Type            | default |
+| --------------- | ------- |
+| `Array<string>` | `[]`    |
 
 An array with the parameters to be passed to the cli. If you want to run it with `--help`, for example, you would do like so:
 
@@ -91,25 +97,23 @@ Be mindful to always split your arguments when you would introduce a space.
 const cli = clifford('src/index.ts', ['--extensions', '.ts'])
 ```
 
-#### options: { debug = false, readDelimiter = '\n', readTimeout = false, useBabelNode = false }
+#### options
 
 Options that modify internal behaviour.
 
-##### debug: boolean = false
+##### debug
+
+| Type      | default |
+| --------- | ------- |
+| `boolean` | `false` |
 
 This option will print out every `stdout` that the command receives in addition to piping it to the `read` methods.
 
-##### readDelimiter: string | RegExp = '\n'
+##### useBabelNode
 
-This option changes the delimiter for the `readLine` method. By changing it, you change the definition of "line".
-
-##### readTimeout: number | false = 1000
-
-Max number of milisseconds to wait on a single read. Calls to `readLine` will return `undefined` if the call takes more than the time defined here.
-
-You can opt out of using any timeout by passing `false` to `readTimeout`.
-
-##### useBabelNode: boolean = false
+| Type      | default                                                             |
+| --------- | ------------------------------------------------------------------- |
+| `boolean` | `true` if `.babelrc` is present, or if you point to a non-`js` file |
 
 Whether clifford should use `babel-node` to run your cli. Provide it as `true` if your `command` parameter points to `.ts` file, or if you want to provide some kind of transpilation step.
 
@@ -117,7 +121,7 @@ When false, clifford will run your cli with the `node` available in `$PATH`.
 
 ### Usage
 
-Clifford will give you an object with the following methods:
+Clifford will give you a clifford instance with the following methods:
 
 #### cli.read
 
@@ -131,9 +135,9 @@ it('prints help', async () => {
 })
 ```
 
-`cli.read` will return you the full string output of your command.
+`cli.read` reads the process' output until its exit event.
 
-Be mindful that if your command prompts for user data, calling `cli.read` multiple times might not work as you expect, as it flushes out the whole of `stdout` on every call. If that's your case, check `cli.readLine`.
+Be mindful that if your cli hangs for any reason (e.g. waits for user input) this method will timeout, since it will wait for the process end.
 
 #### cli.readLine
 
@@ -151,41 +155,41 @@ it('prints help gradually', async () => {
 })
 ```
 
-`cli.readLine` will read the next line available in the `stdout` of your command. If called after `stdout` is empty, will return the empty string.
+`cli.readLine` returns the next line printed in the screen. In case there's no line to be read in the screen, it will wait until a new one has been printed.
 
-If you're reading user input in the same line as the output, you might want to change the `readDelimiter` option to something else (like `/\(y\/n\)/i`) since it doesn't print out the new line character until the input is submitted, so the promise will inevitably time out.
+#### cli.findByText
 
-#### cli.readUntil
-
-> `readUntil: (matcher: RegExp, options?: { stopsAppearing?: boolean }) => Promise<string>`
+> `findByText: (matcher: string | RegExp) => Promise<string>`
 
 ```js
 it('prints the second line eventually', async () => {
   const cli = clifford('src/index.ts', ['--help'])
 
-  const secondLine = await cli.readUntil(/second line/)
+  const secondLine = await cli.findByText(/second line/)
   expect(secondLine).toEqual('My second line of content')
 })
 ```
 
-`cli.readUntil` will read lines available in `stdout` of your cli until it reaches one that matches the regex provided in `matcher`. This is effectively the same as looping over `readLine`, so you should look out on how you configure your `readDelimiter` option.
+`cli.findByText` finds a line in the screen and returns it. It will return the first line it finds, including lines that have already been read. In case no line in the current screen satisfies the provided matcher, it will wait until something that is printed does.
 
-Alternatively, you can invert the logic to keep reading until you _stop_ reading something. This is mostly useful for async processes with animated loaders, where the number of lines printed is not deterministic.
+#### cli.waitUntil
+
+> `waitUntil: (matcher: string | RegExp) -> Promise<string>`
 
 ```js
-it('shows result after fetching the data', async () => {
-  const cli = clifford('src/index.ts', ['--fetch'])
+it('prints a message before closing', async () => {
+  const cli = clifford('src/index.ts', ['--help'])
 
-  const afterFetching = await cli.readUntil(/Fetching your credit\.\.\./, {
-    stopsAppearing: true,
-  })
-  expect(afterFetching).toEqual('You have credit')
+  const lastLine = await waitUntil('a message')
+  expect(lastLine).toEqual("I've sent a message")
 })
 ```
 
+`cli.waitUntil` waits util a line satisfies the matcher provided. It won't look at lines that have already been read, so use it only if you're sure that the line you're looking for is not already flushed to the screen. If you want to match already read lines, use `findByText`.
+
 #### cli.type
 
-> `type: string -> Promise<void>`
+> `type: (messageToType: string) -> Promise<void>`
 
 ```js
 it('prompts if user wants to continue', async () => {
@@ -201,9 +205,11 @@ it('prompts if user wants to continue', async () => {
 })
 ```
 
-`cli.type` will inject whatever you pass to it into the command's `stdin` as if it was the user typing.
+`cli.type` types a string to the process. This will ultimately write the string provided to the process' stdin feed.
 
 #### cli.kill
+
+> `kill: () -> Promise<void>`
 
 ```js
 it('does something and never finishes', async () => {
@@ -211,11 +217,27 @@ it('does something and never finishes', async () => {
 
   //...
 
-  cli.kill()
+  await cli.kill()
 })
 ```
 
-Kills the cli process. Usually your process will be automatically closed as it should return, but if for some reason it doesn't, you should kill it before proceding, so you don't have memory leaks.
+`cli.kill` kills the process and waits until its streams are properly closed. It's advised you wait for this method at the end of tests that don't go through the process until it self-closes.
+
+#### cli.untilClose
+
+> `untilClose: () -> Promise<void>`
+
+```js
+it('takes kind of long to close', () => {
+  const cli = clifford('src/moveStuffInADatabase.js')
+
+  // ...
+
+  await cli.untilClose()
+})
+```
+
+`cli.untilClose` will wait until the underlying process has closed. It's effectively the same as `cli.kill` except it won't trigger the closing of the process itself.
 
 ## Common issues
 
@@ -229,21 +251,6 @@ yarn add --dev @babel/core @babel/node
 
 If you already have `useBabelNode` as false, try `console.log(cli)` to check which path the cli is receiving.
 
-### ReferenceError regeneratorRuntime is not defined
+### Jest did not exit one second after the test run has completed
 
-This means your babel config doesn't support the clifford generator. A common fix is to install `@babel/preset-env` and set it into your `.babelrc`:
-
-```json
-{
-  "presets": [
-    [
-      "@babel/preset-env",
-      {
-        "targets": {
-          "esmodules": true
-        }
-      }
-    ]
-  ]
-}
-```
+This usually means your underlying process has been left hanging in one of your test cases. Try adding `cli.untilClose` to the end of your tests and see which one times out, so you can properly `cli.kill` it.
