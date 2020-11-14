@@ -2,8 +2,8 @@ import { EOL } from 'os'
 import { EventEmitter } from 'events'
 import { Readable } from 'stream'
 import { TextDecoder } from 'util'
-import { Terminal } from './terminal'
-import { EventQueue } from './event-queue'
+import { Terminal } from '../terminal'
+import { EventQueue } from '../event-queue'
 
 interface ReaderConfig {
   replacers?: ((chunk: string) => string)[]
