@@ -1,8 +1,8 @@
+import fs from 'fs'
 import execa from 'execa'
 import { Reader } from './reader'
 
 export interface CliffordOptions {
-  readTimeout?: number | false
   debug?: boolean
   useBabelNode?: boolean
   replacers?: ((chunk: string) => string)[]
@@ -10,8 +10,7 @@ export interface CliffordOptions {
 
 const defaultConfig = (command: string) => ({
   debug: false,
-  readTimeout: 1000,
-  useBabelNode: !command.endsWith('.js'),
+  useBabelNode: !command.endsWith('.js') || fs.existsSync('.babelrc'),
   replacers: [],
 })
 
@@ -91,7 +90,7 @@ class CliffordInstance {
   }
 
   /**
-   * Read the process' output until it's exit event.
+   * Read the process' output until its exit event.
    *
    * WARNING! This _will_ timeout if your process hangs for any reason,
    * i.e. if it waits for user input.
@@ -137,7 +136,7 @@ class CliffordInstance {
 
   /**
    * Waits util a line satisfies the matcher provided.
-   * It won't look lines that already been read, so use it only if you're sure that
+   * It won't look at lines that have already been read, so use it only if you're sure that
    * the line you're looking for is not already flushed to the screen.
    *
    * WARNING! This _will_ timeout if your process hands for any reason,
@@ -161,6 +160,9 @@ class CliffordInstance {
     await this.untilClose()
   }
 
+  /**
+   * Waits until the underlying process has closed.
+   */
   public untilClose() {
     return new Promise<void>((resolve) => {
       this.isDead ? resolve() : this.cli.once('close', resolve)
