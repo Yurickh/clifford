@@ -4,6 +4,8 @@ import { Readable } from 'stream'
 import { TextDecoder } from 'util'
 import { Terminal } from '../terminal'
 import { EventQueue } from '../event-queue'
+import { commonLeadingString } from './common-leading-string'
+import { isRegExp } from './is-regexp'
 
 interface ReaderConfig {
   replacers?: ((chunk: string) => string)[]
@@ -28,17 +30,6 @@ const normalizeChunk = (
     (string, replacer) => replacer(string),
     new TextDecoder().decode(newBuffer),
   )
-}
-
-function commonLeadingString(first: string, second: string) {
-  return first.slice(
-    0,
-    first.split('').findIndex((value, index) => value !== second[index]),
-  )
-}
-
-function isRegExp(value: unknown): value is RegExp {
-  return Object.prototype.toString.call(value) === '[object RegExp]'
 }
 
 function test(matcher: string | RegExp): (subject: string) => boolean
@@ -134,7 +125,7 @@ export class Reader {
 
   // TODO: this doesn't seem to work :T
   public untilClose() {
-    return new Promise((resolve) => {
+    return new Promise<void>((resolve) => {
       this.stream.once('close', () => {
         resolve()
       })
@@ -142,7 +133,6 @@ export class Reader {
   }
 
   public readScreen() {
-    // TODO: add types to terminal
     return this.terminal.read().trimRight()
   }
 
