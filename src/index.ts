@@ -45,6 +45,10 @@ class CliffordInstance {
    * The instance that reads and formats the process' output
    */
   private reader: Reader
+  /**
+   * Flags the underlying process has been closed
+   */
+  private isDead: boolean
 
   constructor(
     private command: string,
@@ -67,6 +71,10 @@ class CliffordInstance {
       debug: this.options.debug,
       replacers: this.options.replacers,
     })
+
+    this.isDead = false
+    this.cli.once('close', () => (this.isDead = true))
+    this.cli.once('exit', () => (this.isDead = true))
   }
 
   /**
@@ -147,13 +155,16 @@ class CliffordInstance {
    * It's advised you wait for this method at the end of tests that don't go through
    * the process until it self-closes.
    */
-  public kill() {
+  public async kill() {
     this.cli.cancel()
 
-    return Promise.race([
-      this.reader.untilClose(),
-      new Promise((resolve) => this.cli.once('close', resolve)),
-    ]).then(() => undefined)
+    await this.untilClose()
+  }
+
+  public untilClose() {
+    return new Promise<void>((resolve) => {
+      this.isDead ? resolve() : this.cli.once('close', resolve)
+    })
   }
 
   /**

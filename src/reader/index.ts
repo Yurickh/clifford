@@ -122,15 +122,6 @@ export class Reader {
     }
   }
 
-  // TODO: this doesn't seem to work :T
-  public untilClose() {
-    return new Promise<void>((resolve) => {
-      this.stream.once('close', () => {
-        resolve()
-      })
-    })
-  }
-
   public readScreen() {
     return this.terminal.read().trimRight()
   }
