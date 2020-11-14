@@ -250,3 +250,7 @@ yarn add --dev @babel/core @babel/node
 ```
 
 If you already have `useBabelNode` as false, try `console.log(cli)` to check which path the cli is receiving.
+
+### Jest did not exit one second after the test run has completed
+
+This usually means your underlying process has been left hanging in one of your test cases. Try adding `cli.untilClose` to the end of your tests and see which one times out, so you can properly `cli.kill` it.
