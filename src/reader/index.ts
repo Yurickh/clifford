@@ -62,9 +62,6 @@ export class Reader {
     this.screen = ''
     this.terminal = new Terminal()
     this.debug = config.debug ?? false
-    // Turns out o que a gente quer aqui não é um emitter, e sim uma stream mesmo,
-    // porque o emitter só vai notificar o pessoal que já está subscrito, mas a gente
-    // quer _esperar_ o próximo evento, mesmo se ele já aconteceu
     this.lineFeedEmitter = new LineFeedEmitter()
 
     this.startListening(config.replacers)
