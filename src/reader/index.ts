@@ -1,4 +1,3 @@
-import { EOL } from 'os'
 import { EventEmitter } from 'events'
 import { Readable } from 'stream'
 import { TextDecoder } from 'util'
@@ -6,6 +5,9 @@ import { Terminal } from '../terminal'
 import { EventQueue } from '../event-queue'
 import { commonLeadingString } from './common-leading-string'
 import { isRegExp } from './is-regexp'
+
+// There's a question of using `EOL` from 'os', but it seems to behave differently on windows
+const EOL = '\n'
 
 interface ReaderConfig {
   replacers?: ((chunk: string) => string)[]
