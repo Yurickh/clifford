@@ -11,6 +11,14 @@
   "engines": {
     "node": ">=10.18"
   },
+  "files": [
+    "dist",
+    "src",
+    "types",
+    "*.md",
+    "*.json",
+    "yarn.lock"
+  ],
   "scripts": {
     "build": "tsdx build",
     "start": "tsdx watch",
