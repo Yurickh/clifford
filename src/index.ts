@@ -163,10 +163,15 @@ class CliffordInstance {
   /**
    * Waits until the underlying process has closed.
    */
-  public untilClose() {
-    return new Promise<void>((resolve) => {
-      this.isDead ? resolve() : this.cli.once('close', resolve)
-    })
+  public async untilClose() {
+    if (this.isDead) {
+      return
+    }
+
+    return Promise.race([
+      new Promise((resolve) => this.cli.once('close', resolve)),
+      this.cli.all,
+    ])
   }
 
   /**

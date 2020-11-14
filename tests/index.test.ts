@@ -54,6 +54,8 @@ describe('clifford', () => {
 
       const secondLine = await cli.findByText('Welcome')
       expect(secondLine).toEqual('Welcome to the second line')
+
+      await cli.untilClose()
     })
   })
 
@@ -64,6 +66,8 @@ describe('clifford', () => {
 
       const secondLine = await cli.waitUntil('Welcome')
       expect(secondLine).toEqual('Welcome to the second line')
+
+      await cli.untilClose()
     })
   })
 
@@ -78,6 +82,8 @@ describe('clifford', () => {
 
       const secondLine = await cli.readLine()
       expect(secondLine).toEqual('Welcome to the second line')
+
+      await cli.untilClose()
     })
   })
 
@@ -86,5 +92,7 @@ describe('clifford', () => {
 
     const version = await cli.read()
     expect(version).toMatch(/\d+\.\d+\.\d+/)
+
+    await cli.untilClose()
   })
 })

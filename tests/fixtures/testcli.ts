@@ -7,7 +7,7 @@ const RL = readline.createInterface({
 })
 
 async function testcommand(): Promise<void> {
-  RL.question('Do you want to see the second line?\n', answer => {
+  RL.question('Do you want to see the second line?\n', (answer) => {
     if (answer.includes('y')) {
       console.log('Welcome to the second line')
     }
