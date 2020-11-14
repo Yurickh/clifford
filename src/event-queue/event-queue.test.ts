@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events'
-import { EventQueue } from '../src/event-queue'
+import { EventQueue } from '.'
 
 const runPendingListeners = () =>
   new Promise((resolve) => setImmediate(resolve))
@@ -14,7 +14,9 @@ describe('EventQueue', () => {
     emitter.emit('potato')
     emitter.emit('potato')
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((queue as any).readPointer).toBe(0)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((queue as any).writePointer).toBe(3)
   })
 
